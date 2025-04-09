@@ -1,142 +1,185 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import * as XLSX from 'xlsx';
+import { supabase } from '../config/supabase';
 
-const FileUploadModal = ({ isOpen, onClose, fileInfo }) => {
+const FileUploadModal = ({ isOpen, onClose, file, onUploadSuccess }) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [excelData, setExcelData] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [companyName, setCompanyName] = useState('');
 
-  useEffect(() => {
-    if (isOpen && fileInfo) {
-      loadExcelContent();
-    }
-  }, [isOpen, fileInfo]);
+  // Procesar archivo Excel
+  const processExcelFile = useCallback(async () => {
+    if (!file) return;
 
-  const loadExcelContent = async () => {
-    if (!fileInfo.file) return;
-    
-    setIsLoading(true);
     try {
+      setLoading(true);
+      setError(null);
+
       const reader = new FileReader();
-      reader.onload = (e) => {
-        const data = e.target.result;
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-        setExcelData(jsonData);
+      reader.onload = async (e) => {
+        try {
+          const data = e.target.result;
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+
+          // Validar que el archivo tenga datos
+          if (!jsonData || jsonData.length < 2) {
+            throw new Error('El archivo Excel está vacío o no tiene el formato esperado');
+          }
+
+          setExcelData(jsonData);
+        } catch (error) {
+          setError('Error al procesar el archivo Excel: ' + error.message);
+        } finally {
+          setLoading(false);
+        }
       };
-      reader.readAsArrayBuffer(fileInfo.file);
+
+      reader.onerror = () => {
+        setError('Error al leer el archivo');
+        setLoading(false);
+      };
+
+      reader.readAsArrayBuffer(file);
     } catch (error) {
-      console.error('Error al leer el archivo:', error);
+      setError('Error al procesar el archivo: ' + error.message);
+      setLoading(false);
+    }
+  }, [file]);
+
+  // Subir archivo y datos a Supabase
+  const handleUpload = async () => {
+    if (!file || !excelData || !companyName) {
+      setError('Faltan datos requeridos');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Obtener el usuario actual
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      if (!session) throw new Error('No hay sesión activa');
+
+      const userId = session.user.id;
+
+      // 1. Subir archivo al storage
+      const fileName = `${Date.now()}-${file.name}`;
+      const filePath = `${userId}/files/${fileName}`;
+      const { data: storageData, error: storageError } = await supabase.storage
+        .from('files')
+        .upload(filePath, file);
+
+      if (storageError) throw storageError;
+
+      // 2. Crear registro en la tabla files
+      const { data: fileData, error: fileError } = await supabase
+        .from('files')
+        .insert([{
+          name: companyName,
+          original_name: file.name,
+          size: file.size,
+          type: file.type,
+          storage_path: storageData.path,
+          content: excelData,
+          status: 'success',
+          user_id: userId
+        }])
+        .select()
+        .single();
+
+      if (fileError) throw fileError;
+
+      // 3. Procesar datos del inventario
+      const headers = excelData[0];
+      const items = excelData.slice(1).map(row => {
+        const item = {};
+        headers.forEach((header, index) => {
+          item[header.toLowerCase().replace(/\s+/g, '_')] = row[index];
+        });
+        return {
+          ...item,
+          file_id: fileData.id,
+          user_id: userId
+        };
+      });
+
+      // 4. Insertar items en la tabla inventory
+      const { error: inventoryError } = await supabase
+        .from('inventory')
+        .insert(items);
+
+      if (inventoryError) throw inventoryError;
+
+      onUploadSuccess(fileData);
+      onClose();
+    } catch (error) {
+      console.error('Error uploading:', error);
+      setError('Error al subir el archivo: ' + error.message);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
+
+  // Efecto para procesar el archivo cuando se abre el modal
+  React.useEffect(() => {
+    if (isOpen && file) {
+      processExcelFile();
+    }
+  }, [isOpen, file, processExcelFile]);
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div className="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium text-gray-900">
-            Información del Archivo
-          </h3>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-500"
-          >
-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        <div className="mt-2">
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Nombre del Archivo</label>
-              <p className="mt-1 text-sm text-gray-900">{fileInfo.name}</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Tipo de Archivo</label>
-              <p className="mt-1 text-sm text-gray-900">{fileInfo.type}</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Tamaño</label>
-              <p className="mt-1 text-sm text-gray-900">{fileInfo.size}</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Fecha de Subida</label>
-              <p className="mt-1 text-sm text-gray-900">{fileInfo.uploadDate}</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Estado</label>
-              <span className={`mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                fileInfo.status === 'success' 
-                  ? 'bg-green-100 text-green-800' 
-                  : 'bg-red-100 text-red-800'
-              }`}>
-                {fileInfo.status === 'success' ? 'Procesado Correctamente' : 'Error en el Procesamiento'}
-              </span>
-            </div>
-
-            {/* Contenido del Excel */}
-            {isLoading ? (
-              <div className="flex justify-center items-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-              </div>
-            ) : excelData ? (
-              <div className="mt-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Contenido del Archivo
-                </label>
-                <div className="overflow-x-auto border rounded-lg">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        {excelData[0]?.map((header, index) => (
-                          <th
-                            key={index}
-                            scope="col"
-                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                          >
-                            {header}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {excelData.slice(1).map((row, rowIndex) => (
-                        <tr key={rowIndex}>
-                          {row.map((cell, cellIndex) => (
-                            <td
-                              key={cellIndex}
-                              className="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
-                            >
-                              {cell}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ) : null}
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+      <div className="bg-gray-800 rounded-lg p-6 w-full max-w-lg">
+        <h2 className="text-xl font-bold text-white mb-4">Subir Archivo</h2>
+        
+        {error && (
+          <div className="bg-red-500 text-white p-3 rounded mb-4">
+            {error}
           </div>
+        )}
+
+        <div className="mb-4">
+          <label className="block text-white mb-2">Nombre de la Empresa</label>
+          <input
+            type="text"
+            value={companyName}
+            onChange={(e) => setCompanyName(e.target.value)}
+            className="w-full p-2 rounded bg-gray-700 text-white border border-gray-600"
+            placeholder="Ingrese el nombre de la empresa"
+            disabled={loading}
+          />
         </div>
 
-        <div className="mt-4 flex justify-end">
+        {excelData && (
+          <div className="mb-4">
+            <p className="text-green-400 mb-2">✓ Archivo procesado correctamente</p>
+            <p className="text-gray-300">
+              Registros encontrados: {excelData.length - 1}
+            </p>
+          </div>
+        )}
+
+        <div className="flex justify-end gap-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
+            className="px-4 py-2 rounded bg-gray-700 text-white hover:bg-gray-600"
+            disabled={loading}
           >
-            Cerrar
+            Cancelar
+          </button>
+          <button
+            onClick={handleUpload}
+            disabled={loading || !excelData || !companyName}
+            className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50"
+          >
+            {loading ? 'Subiendo...' : 'Subir'}
           </button>
         </div>
       </div>
