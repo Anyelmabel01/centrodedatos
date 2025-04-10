@@ -8,7 +8,7 @@ const App = () => {
     <Router>
       <Toaster position="top-right" />
       <Routes>
-        <Route path="/" element={<DashboardPage />} />
+        <Route path="*" element={<DashboardPage />} />
       </Routes>
     </Router>
   );
