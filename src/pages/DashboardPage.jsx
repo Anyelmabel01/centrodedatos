@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../config/supabase';
 import FileUploadModal from '../components/FileUploadModal';
+import InventoryModal from '../components/InventoryModal';
 import { toast } from 'react-hot-toast';
 
 const DashboardPage = () => {
@@ -8,6 +9,8 @@ const DashboardPage = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState({});
+  const [isInventoryModalOpen, setIsInventoryModalOpen] = useState(false);
+  const [selectedInventoryFileId, setSelectedInventoryFileId] = useState(null);
   const rowsPerPage = 10;
 
   useEffect(() => {
@@ -104,6 +107,11 @@ const DashboardPage = () => {
     }
   };
 
+  const handleOpenInventory = (fileId) => {
+    setSelectedInventoryFileId(fileId);
+    setIsInventoryModalOpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 text-white">
       {/* Navbar mejorado */}
@@ -172,15 +180,26 @@ const DashboardPage = () => {
                         </p>
                       </div>
                     </div>
-                    <button
-                      onClick={() => handleDelete(file.id, file.storage_path)}
-                      className="bg-red-500/10 p-1.5 rounded-lg text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors"
-                      title="Eliminar archivo"
-                    >
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleOpenInventory(file.id)}
+                        className="bg-green-500/10 p-1.5 rounded-lg text-green-400 hover:bg-green-500/20 hover:text-green-300 transition-colors"
+                        title="Abrir inventario"
+                      >
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => handleDelete(file.id, file.storage_path)}
+                        className="bg-red-500/10 p-1.5 rounded-lg text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors"
+                        title="Eliminar archivo"
+                      >
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                   <div className="mt-3 flex items-center text-xs text-gray-500 space-x-2">
                     <span className="flex items-center">
@@ -310,6 +329,12 @@ const DashboardPage = () => {
         }}
         file={selectedFile}
         onUploadSuccess={handleUploadSuccess}
+      />
+      
+      <InventoryModal
+        isOpen={isInventoryModalOpen}
+        onClose={() => setIsInventoryModalOpen(false)}
+        fileId={selectedInventoryFileId}
       />
     </div>
   );
