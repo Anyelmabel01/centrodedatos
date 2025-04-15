@@ -1,10 +1,10 @@
 import React from 'react';
 
 // Adjusted for Light Theme
-const FileContentModal = ({ isOpen, onClose, fileData }) => {
-  if (!isOpen || !fileData) return null;
+const FileContentModal = ({ isOpen, onClose, file }) => {
+  if (!isOpen || !file) return null;
 
-  const content = fileData.content || []; 
+  const content = file.content || []; 
   const headers = content.length > 0 ? content[0] : [];
   const dataRows = content.length > 1 ? content.slice(1) : [];
 
@@ -15,7 +15,7 @@ const FileContentModal = ({ isOpen, onClose, fileData }) => {
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Modal Header - Light theme */}
         <div className="flex justify-between items-center p-4 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-800">Contenido de: {fileData.name}</h2>
+          <h2 className="text-xl font-semibold text-gray-800">Contenido de: {file.name}</h2>
           <button 
             onClick={onClose} 
             className="text-gray-500 hover:text-gray-700 transition-colors p-1 rounded-full hover:bg-gray-100"
