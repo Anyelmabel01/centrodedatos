@@ -257,12 +257,12 @@ const DashboardPage = () => {
                 Centro de Datos
               </h1>
             </div>
-            <div className="flex items-center space-x-3">
-              <label className="inline-flex items-center px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg cursor-pointer transition-all duration-300 ease-in-out transform hover:-translate-y-0.5 hover:shadow-lg group text-sm font-medium focus-within:ring-2 focus-within:ring-primary-500 focus-within:ring-offset-2 focus-within:ring-offset-gray-50">
-                <svg className="h-5 w-5 mr-2 group-hover:rotate-[15deg] transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="flex items-center space-x-2 sm:space-x-3">
+              <label className="inline-flex items-center px-3 sm:px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg cursor-pointer transition-all duration-300 ease-in-out transform hover:-translate-y-0.5 hover:shadow-lg group text-sm font-medium focus-within:ring-2 focus-within:ring-primary-500 focus-within:ring-offset-2 focus-within:ring-offset-gray-50">
+                <svg className="h-5 w-5 mr-0 sm:mr-2 group-hover:rotate-[15deg] transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                 </svg>
-                <span>Subir Archivo</span>
+                <span className="hidden sm:inline">Subir Archivo</span>
                 <input
                   type="file"
                   className="hidden"
@@ -281,17 +281,10 @@ const DashboardPage = () => {
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {/* Tarjeta Total Archivos */}
               <StatsCard
-                  icon={<DocumentDuplicateIcon className="h-6 w-6 text-blue-600" />} // Pasando el icono como elemento
+                  icon={<DocumentDuplicateIcon className="h-6 w-6 text-blue-600" />} 
                   label="Total Archivos"
                   value={isLoading ? '...' : stats.totalFilesCount}
                   color="primary"
-              />
-              {/* Tarjeta Tamaño Total */}
-              <StatsCard
-                  icon={<ServerIcon className="h-6 w-6 text-green-600" />} // Pasando el icono como elemento
-                  label="Espacio Utilizado"
-                  value={isLoading ? '...' : stats.totalSizeFormatted}
-                  color="green"
               />
               {/* Puedes añadir más tarjetas aquí si calculas más estadísticas */}
               {/* 
@@ -309,7 +302,7 @@ const DashboardPage = () => {
         <header className="mb-6">
           <div className="md:flex md:items-center md:justify-between mb-4">
             <h2 className="text-3xl font-bold text-gray-900 tracking-tight mb-4 md:mb-0">Archivos Recientes</h2>
-            <div className="relative w-full md:max-w-xs">
+            <div className="relative w-full sm:max-w-xs md:max-w-sm">
               <input
                 type="text"
                 placeholder="Buscar por nombre..."
@@ -324,7 +317,7 @@ const DashboardPage = () => {
               </div>
             </div>
           </div>
-          <div className="flex items-center space-x-2 text-sm text-gray-600">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-600">
             <span>Ordenar por:</span>
             <button
               onClick={() => handleSortChange('created_at')}
